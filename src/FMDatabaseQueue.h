@@ -105,6 +105,7 @@
  */
 
 - (void)inDatabase:(void (^)(FMDatabase *db))block;
+- (BOOL)inDatabase:(void (^)(FMDatabase *db))block error:(NSError **)error;
 
 /** Synchronously perform database operations on queue, using transactions.
 
@@ -112,6 +113,7 @@
  */
 
 - (void)inTransaction:(void (^)(FMDatabase *db, BOOL *rollback))block;
+- (BOOL)inTransaction:(void (^)(FMDatabase *db, BOOL *rollback))block error:(NSError **)error;
 
 /** Synchronously perform database operations on queue, using deferred transactions.
 
@@ -119,6 +121,7 @@
  */
 
 - (void)inDeferredTransaction:(void (^)(FMDatabase *db, BOOL *rollback))block;
+- (BOOL)inDeferredTransaction:(void (^)(FMDatabase *db, BOOL *rollback))block error:(NSError **)error;
 
 ///-----------------------------------------------
 /// @name Dispatching database operations to queue

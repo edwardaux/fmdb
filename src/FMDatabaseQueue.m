@@ -13,10 +13,10 @@ static const char *INTERNAL_QUEUE_IDENTIFIER = "fmdb.internal.queue.id";
 
 // checks if already in current queue, prevents deadlock
 void dispatch_sync_reentrant(dispatch_queue_t queue, dispatch_block_t block) {
-	if (dispatch_get_specific(INTERNAL_QUEUE_IDENTIFIER) == INTERNAL_QUEUE_IDENTIFIER)
-		block();
-	else
-		dispatch_sync(queue, block);
+    if (dispatch_get_specific(INTERNAL_QUEUE_IDENTIFIER) == INTERNAL_QUEUE_IDENTIFIER)
+        block();
+    else
+        dispatch_sync(queue, block);
 }
 
 /*
@@ -104,54 +104,84 @@ void dispatch_sync_reentrant(dispatch_queue_t queue, dispatch_block_t block) {
 }
 
 - (void)inDatabase:(void (^)(FMDatabase *db))block {
+    [self inDatabase:block error:NULL];
+}
+
+- (BOOL)inDatabase:(void (^)(FMDatabase *db))block error:(NSError **)error {
     FMDBRetain(self);
     
+    __block BOOL ok = YES;
     dispatch_sync_reentrant(_queue, ^() {
         
         FMDatabase *db = [self database];
         block(db);
         
+        if ([db hadError]) {
+            ok = NO;
+            if (error != NULL)
+                *error = [db lastError];
+        }
+
         if ([db hasOpenResultSets]) {
             NSLog(@"Warning: there is at least one open result set around after performing [FMDatabaseQueue inDatabase:]");
         }
     });
     
     FMDBRelease(self);
+    return ok;
 }
 
 
-- (void)beginTransaction:(BOOL)useDeferred withBlock:(void (^)(FMDatabase *db, BOOL *rollback))block {
+- (BOOL)beginTransaction:(BOOL)useDeferred withBlock:(void (^)(FMDatabase *db, BOOL *rollback))block error:(NSError **)error {
     FMDBRetain(self);
-    dispatch_sync_reentrant(_queue, ^() { 
+
+    __block BOOL ok = YES;
+    dispatch_sync_reentrant(_queue, ^() {
         
         BOOL shouldRollback = NO;
         
         if (useDeferred) {
-            [[self database] beginDeferredTransaction];
+            ok = [[self database] beginDeferredTransaction];
         }
         else {
-            [[self database] beginTransaction];
+            ok = [[self database] beginTransaction];
         }
-        
+
+        if (!ok)
+            return;
+
         block([self database], &shouldRollback);
         
         if (shouldRollback) {
-            [[self database] rollback];
+            ok = [[self database] rollback];
         }
         else {
-            [[self database] commit];
+            ok = [[self database] commit];
+        }
+
+        if (!ok && error != NULL) {
+            *error = [[self database] lastError];
         }
     });
-    
+  
     FMDBRelease(self);
+    return ok;
 }
 
 - (void)inDeferredTransaction:(void (^)(FMDatabase *db, BOOL *rollback))block {
-    [self beginTransaction:YES withBlock:block];
+    [self beginTransaction:YES withBlock:block error:NULL];
+}
+
+- (BOOL)inDeferredTransaction:(void (^)(FMDatabase *db, BOOL *rollback))block error:(NSError **)error {
+    return [self beginTransaction:YES withBlock:block error:error];
 }
 
 - (void)inTransaction:(void (^)(FMDatabase *db, BOOL *rollback))block {
-    [self beginTransaction:NO withBlock:block];
+    [self beginTransaction:NO withBlock:block error:NULL];
+}
+
+- (BOOL)inTransaction:(void (^)(FMDatabase *db, BOOL *rollback))block error:(NSError **)error {
+    return [self beginTransaction:NO withBlock:block error:error];
 }
 
 #if SQLITE_VERSION_NUMBER >= 3007000
