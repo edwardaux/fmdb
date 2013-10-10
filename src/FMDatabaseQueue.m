@@ -9,6 +9,16 @@
 #import "FMDatabaseQueue.h"
 #import "FMDatabase.h"
 
+static const char *INTERNAL_QUEUE_IDENTIFIER = "fmdb.internal.queue.id";
+
+// checks if already in current queue, prevents deadlock
+void dispatch_sync_reentrant(dispatch_queue_t queue, dispatch_block_t block) {
+	if (dispatch_get_specific(INTERNAL_QUEUE_IDENTIFIER) == INTERNAL_QUEUE_IDENTIFIER)
+		block();
+	else
+		dispatch_sync(queue, block);
+}
+
 /*
  
  Note: we call [self retain]; before using dispatch_sync, just incase 
@@ -48,6 +58,7 @@
         _path = FMDBReturnRetained(aPath);
         
         _queue = dispatch_queue_create([[NSString stringWithFormat:@"fmdb.%@", self] UTF8String], NULL);
+        dispatch_queue_set_specific(_queue, INTERNAL_QUEUE_IDENTIFIER, (void *)INTERNAL_QUEUE_IDENTIFIER, NULL);
     }
     
     return self;
@@ -69,7 +80,7 @@
 
 - (void)close {
     FMDBRetain(self);
-    dispatch_sync(_queue, ^() { 
+    dispatch_sync_reentrant(_queue, ^() { 
         [_db close];
         FMDBRelease(_db);
         _db = 0x00;
@@ -95,7 +106,7 @@
 - (void)inDatabase:(void (^)(FMDatabase *db))block {
     FMDBRetain(self);
     
-    dispatch_sync(_queue, ^() {
+    dispatch_sync_reentrant(_queue, ^() {
         
         FMDatabase *db = [self database];
         block(db);
@@ -111,7 +122,7 @@
 
 - (void)beginTransaction:(BOOL)useDeferred withBlock:(void (^)(FMDatabase *db, BOOL *rollback))block {
     FMDBRetain(self);
-    dispatch_sync(_queue, ^() { 
+    dispatch_sync_reentrant(_queue, ^() { 
         
         BOOL shouldRollback = NO;
         
@@ -149,7 +160,7 @@
     static unsigned long savePointIdx = 0;
     __block NSError *err = 0x00;
     FMDBRetain(self);
-    dispatch_sync(_queue, ^() { 
+    dispatch_sync_reentrant(_queue, ^() { 
         
         NSString *name = [NSString stringWithFormat:@"savePoint%ld", savePointIdx++];
         
