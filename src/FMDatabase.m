@@ -340,7 +340,7 @@
 }
 
 - (int)lastErrorCode {
-    return sqlite3_errcode(_db);
+    return _db ? sqlite3_errcode(_db) : SQLITE_OK;
 }
 
 
