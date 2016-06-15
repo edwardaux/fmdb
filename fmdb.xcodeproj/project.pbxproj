@@ -387,6 +387,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				PRODUCT_NAME = FMDB;
 				PUBLIC_HEADERS_FOLDER_PATH = include/FMDB;
+				SKIP_INSTALL = YES;
 				ZERO_LINK = NO;
 			};
 			name = Testing;
@@ -401,6 +402,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				PRODUCT_NAME = FMDB;
 				PUBLIC_HEADERS_FOLDER_PATH = include/FMDB;
+				SKIP_INSTALL = YES;
 			};
 			name = Debug;
 		};
@@ -413,6 +415,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				PRODUCT_NAME = FMDB;
 				PUBLIC_HEADERS_FOLDER_PATH = include/FMDB;
+				SKIP_INSTALL = YES;
 				ZERO_LINK = NO;
 			};
 			name = Release;
